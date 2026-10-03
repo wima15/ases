@@ -17,7 +17,7 @@ body{background:var(--bg);color:var(--tx);font-family:"Plus Jakarta Sans",system
 #hK{font-size:calc(1.5rem*var(--fj,1))}@media(min-width:640px){#hK{font-size:calc(2.25rem*var(--fj,1))}}
 .card{background:var(--card);border:1px solid var(--bd);border-radius:1rem;padding:1.25rem;margin-bottom:1rem;box-shadow:0 4px 20px -2px rgba(0,0,0,.05)}
 .mu{color:var(--mu)}
-.inp{width:100%;padding:.65rem 1rem;border:1px solid var(--bd);border-radius:.75rem;background:var(--inp);color:var(--tx);font-size:.875rem}
+.klist{display:flex;flex-wrap:wrap;gap:.5rem;padding:.6rem;border:1px solid var(--bd);border-radius:.75rem;background:var(--inp)}.klist label.kopt{display:inline-flex;align-items:center;gap:.4rem;padding:.4rem .75rem;border:1px solid var(--bd);border-radius:.6rem;background:var(--card);color:var(--tx);font-size:.85rem;font-weight:600;cursor:pointer;user-select:none}.klist label.kopt:has(input:checked){border-color:var(--ac);box-shadow:0 0 0 1px var(--ac)}.klist input[type=checkbox]{width:1.05rem;height:1.05rem;accent-color:var(--ac);cursor:pointer}.inp{width:100%;padding:.65rem 1rem;border:1px solid var(--bd);border-radius:.75rem;background:var(--inp);color:var(--tx);font-size:.875rem}
 .inp:focus{outline:2px solid var(--ac)}
 .lbl{display:block;font-size:.7rem;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--mu);margin-bottom:.25rem}
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:.4rem;padding:.6rem 1.1rem;border-radius:.75rem;background:var(--ac);color:#fff;font-weight:600;font-size:.875rem;border:1px solid var(--ac);cursor:pointer;white-space:nowrap}
@@ -201,7 +201,9 @@ const chkS=()=>{try{return /(^|[#?&])siswa\b/i.test(location.hash+location.searc
 try{edit=sessionStorage.getItem('wm_edit')==='1'}catch(e){}
 if(SISWA)edit=false;
 const app=document.getElementById('app'),$=id=>document.getElementById(id);
-const kelasOpts=(t,sel)=>'<option value="*"'+(sel==='*'?' selected':'')+'>Semua kelas</option>'+(S.classes[t]||[]).map(k=>`<option${k===sel?' selected':''}>${esc(k)}</option>`).join('');
+const kelasOpts=(t,sel)=>{const on=new Set(Array.isArray(sel)?sel:[sel]);return '<label class="kopt"><input type="checkbox" class="kall" value="*"'+(on.has('*')?' checked':'')+'> Semua kelas</label>'+(S.classes[t]||[]).map(k=>`<label class="kopt"><input type="checkbox" class="kc" value="${esc(k)}"${on.has(k)?' checked':''}> ${esc(k)}</label>`).join('')+((S.classes[t]||[]).length?'':'<span class="mu text-xs" style="align-self:center">Belum ada kelas di tingkat ini. Tambah di tab Kelola Kelas.</span>')};
+const kelasChecked=()=>[...document.querySelectorAll('#fk input:checked')].map(x=>x.value);
+function kelasBind(){const box=$('fk');if(!box)return;box.onchange=e=>{const el=e.target;if(!el||el.type!=='checkbox')return;if(el.classList.contains('kall')){if(el.checked)box.querySelectorAll('.kc').forEach(x=>x.checked=false)}else if(el.checked){const a=box.querySelector('.kall');if(a)a.checked=false}}}
 function toast(m){let t=$('toast');if(!t){t=document.createElement('div');t.id='toast';document.body.appendChild(t)}t.textContent=m;t.style.bottom=edit?'calc(6rem + env(safe-area-inset-bottom,0px))':'';clearTimeout(t._h);t._h=setTimeout(()=>t.remove(),3200)}
 function updBar(){const s=$('pst'),b=$('ppub');if(!s||!b)return;s.innerHTML=dirty?`<span class="tag" style="background:#fef3c7;color:#b45309">${I('alert','w-3 h-3')} Ada perubahan belum diterbitkan</span>`:`<span class="tag" style="background:#d1fae5;color:#047857">${I('check','w-3 h-3')} Semua perubahan tersimpan</span>`;b.disabled=!dirty}
 const chipsT=()=>'<div class="flex flex-wrap gap-2">'+S.levels.map(l=>`<button class="chip${l===selT?' on':''}" data-a="t" data-v="${esc(l)}">${I('layers','w-3.5 h-3.5')} Kelas ${esc(l)}</button>`).join('')+'</div>';
@@ -241,7 +243,7 @@ function formTombol(){
     <div><label class="lbl">Tanggal Pelaksanaan <span class="mu" style="text-transform:none;font-weight:500">(boleh kosong)</span> <span id="fh" style="color:var(--ac)">${d.tanggal?'· '+HARI[dow(d.tanggal)]:''}</span></label><input id="fd" type="date" class="inp" value="${esc(d.tanggal)}"></div>
     <div><label class="lbl">Jam Ke <span class="mu" style="text-transform:none;font-weight:500">(boleh kosong)</span></label><input id="fm" class="inp" placeholder="Misal: 1 atau 1-2" value="${esc(d.jam)}"></div>
     <div><label class="lbl">Tingkat</label><select id="ft" class="inp">${S.levels.map(l=>`<option${l===d.tingkat?' selected':''}>${esc(l)}</option>`).join('')}</select></div>
-    <div><label class="lbl">Kelas</label><select id="fk" class="inp">${kelasOpts(d.tingkat,d.kelas)}</select></div>
+    <div class="sm:col-span-2"><label class="lbl">Kelas <span class="mu" style="text-transform:none;font-weight:500">(centang satu atau lebih)</span></label><div id="fk" class="klist">${kelasOpts(d.tingkat,d.kelas)}</div></div>
     <div class="sm:col-span-2"><label class="lbl">Link Google Form <span class="mu" style="text-transform:none;font-weight:500">(boleh kosong)</span></label><input id="fu" type="url" class="inp" placeholder="https://forms.gle/..." value="${esc(d.url)}"></div></div>
     <div class="flex gap-2 mt-4"><button class="btn" data-a="sv">${I('check')} ${editId?'Simpan Perubahan':'Tambah Tombol'}</button><button class="btn btn2" data-a="cx">Batal</button></div></div>`;
 }
@@ -329,7 +331,7 @@ function render(){
   if(askPw){const p=$('pw');if(p)p.focus()}
   {const dt=$('dtabs'),o=dt&&dt.querySelector('.on');if(o)dt.scrollLeft=o.offsetLeft-(dt.clientWidth-o.clientWidth)/2}
   if(focusForm){focusForm=false;const f=$('fj');if(f){const bx=f.closest('.it');if(bx)bx.scrollIntoView({block:'center',behavior:'smooth'});f.focus({preventScroll:true})}}
-  const ft=$('ft');if(ft)ft.onchange=()=>{$('fk').innerHTML=kelasOpts(ft.value,'*')};
+  const ft=$('ft');if(ft)ft.onchange=()=>{$('fk').innerHTML=kelasOpts(ft.value,'*');kelasBind()};kelasBind();
   const fd=$('fd');if(fd)fd.oninput=()=>{$('fh').textContent=fd.value?'· '+HARI[dow(fd.value)]:''};
   const gf=$('gF');if(gf)gf.oninput=()=>{const v=+gf.value;S.fj=v/100;$('hK').style.setProperty('--fj',S.fj);$('gFv').textContent=v+'%';dirty=true;updBar()};
   const xf=$('xf');if(xf)xf.onchange=()=>{if(xf.files[0])readImport(xf.files[0])};
@@ -485,11 +487,20 @@ app.addEventListener('click',e=>{
     if((S.classes[selT]||[]).includes(n))return toast('Kelas sudah ada.');
     (S.classes[selT]=S.classes[selT]||[]).push(n);dirty=true}
   else if(a==='sv'){
-    const d={judul:$('fj').value.trim(),tanggal:$('fd').value,jam:normJam($('fm').value),tingkat:$('ft').value,kelas:$('fk').value,url:$('fu').value.trim()};
+    const d={judul:$('fj').value.trim(),tanggal:$('fd').value,jam:normJam($('fm').value),tingkat:$('ft').value,url:$('fu').value.trim()};
+    let ks=kelasChecked();if(ks.includes('*'))ks=['*'];
     if(!d.judul)return toast('Isi nama mata pelajaran.');
+    if(!ks.length)return toast('Centang minimal satu kelas.');
     if(d.url&&!okUrl(d.url))return toast('Link harus berupa Google Form (https://forms.gle/… atau docs.google.com/forms/…).');
-    const was=editId;if(was)Object.assign(S.items.find(i=>i.id===was),d);else S.items.push({id:newId(),akses:'auto',terbit:false,...d});
-    selT=d.tingkat;showForm=false;editId=null;draft=null;dirty=true;toast(was?'Perubahan disimpan. Terbitkan agar tampil bagi siswa.':'Tombol disimpan sebagai draf. Klik Terbitkan agar tampil bagi siswa.')}
+    const was=editId,base=was?S.items.find(i=>i.id===was):null;
+    let n=0;
+    ks.forEach((k,idx)=>{
+      const row={...d,kelas:k};
+      if(was&&idx===0){Object.assign(base,row);n++}
+      else{S.items.push({id:newId(),akses:base?base.akses:'auto',terbit:base?base.terbit:false,...row});n++}
+    });
+    selT=d.tingkat;showForm=false;editId=null;draft=null;dirty=true;
+    toast(was?(n>1?'Perubahan disimpan dan '+(n-1)+' tombol kelas lain ditambahkan. ':'Perubahan disimpan. ')+'Terbitkan agar tampil bagi siswa.':(n>1?n+' tombol (satu per kelas) disimpan sebagai draf. ':'Tombol disimpan sebagai draf. ')+'Klik Terbitkan agar tampil bagi siswa.')}
   else if(a==='ed'){const i=S.items.find(x=>x.id===v);editId=v;draft={...i};selT=i.tingkat;showForm=true;focusForm=true}
   else if(a==='cx'){showForm=false;editId=null;draft=null}
   else if(a==='ball'){const n=S.items.filter(i=>i.tingkat===selT).map(i=>{i.akses=v;delete i.aktif}).length;dirty=true;toast('Akses '+n+' tombol Kelas '+selT+' diatur: '+({auto:'Otomatis',buka:'Buka',tutup:'Tutup'}[v])+'. Klik Simpan & Terbitkan.')}
