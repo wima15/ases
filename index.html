@@ -59,6 +59,17 @@ header.hero,main{padding-left:max(1rem,env(safe-area-inset-left))!important;padd
 /* tab hari (siswa): tampil semua, tanpa geser kiri-kanan */
 #dtabs{display:grid;grid-template-columns:repeat(auto-fill,minmax(4.25rem,1fr));gap:.4rem;overflow:visible;flex-wrap:wrap}
 #dtabs .tab{min-width:0;width:100%;padding:.45rem .2rem;justify-content:center;text-align:center;line-height:1.15}
+.gal{display:grid;gap:.75rem;grid-template-columns:repeat(auto-fill,minmax(14rem,1fr))}
+.gal.one{grid-template-columns:1fr}
+.gal figure{margin:0;border:1px solid var(--bd);border-radius:.75rem;overflow:hidden;background:var(--inp);cursor:zoom-in}
+.gal img{display:block;width:100%;height:auto;aspect-ratio:16/10;object-fit:cover}
+.gal.one img{aspect-ratio:auto;max-height:28rem;object-fit:contain;background:var(--inp)}
+.gal figcaption{padding:.5rem .75rem;font-size:.8rem;color:var(--mu);text-align:center}
+.lbx{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.85);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:1rem;gap:.75rem;cursor:zoom-out}
+.lbx img{max-width:100%;max-height:82vh;border-radius:.5rem;object-fit:contain}
+.lbx p{color:#fff;font-size:.9rem;text-align:center}
+.gadm{display:flex;gap:.75rem;align-items:center;flex-wrap:wrap}
+.gadm img{width:5.5rem;height:3.6rem;object-fit:cover;border-radius:.5rem;flex:none}
 </style>
 </head>
 <body>
@@ -220,11 +231,53 @@ const studentCard=i=>{
   if(st.k==='belum'||st.k==='selesai')return `<div class="it opacity-60">${body(`<span class="tag" style="white-space:normal;text-align:center;max-width:8.5rem">${esc(st.t)}</span>`)}</div>`;
   return i.url?`<a class="it block no-underline" style="color:inherit" href="${esc(i.url)}" target="_blank" rel="noopener noreferrer">${body(`<span class="btn sm">Mulai ${I('arrow','w-3 h-3')}</span>`)}</a>`:`<div class="it opacity-60">${body('<span class="tag">Belum tersedia</span>')}</div>`;
 };
+/* ---------- galeri gambar halaman depan ---------- */
+const GAL_MAX=12;
+const okImg=u=>typeof u==='string'&&/^data:image\/(jpeg|png|webp|gif);base64,/i.test(u);
+const galList=()=>(S.galeri||[]).filter(g=>g&&okImg(g.src));
+function galeriView(){
+  const l=galList();if(!l.length)return '';
+  return `<div class="card"><div class="gal${l.length===1?' one':''}">${l.map(g=>`<figure data-a="glb" data-v="${esc(g.id)}"><img src="${esc(g.src)}" alt="${esc(g.cap||'Gambar')}" loading="lazy">${g.cap?`<figcaption>${esc(g.cap)}</figcaption>`:''}</figure>`).join('')}</div></div>`;
+}
+function galeriCard(){
+  const l=S.galeri||[];
+  return `<div class="card"><h2 class="font-bold text-lg mb-1 flex items-center gap-2">${I('eye','w-5 h-5')} Gambar Halaman Depan</h2><p class="mu text-xs mb-4">Gambar tampil di halaman pertama siswa, tepat di bawah pilihan tingkat kelas (maks. ${GAL_MAX} gambar). Gambar otomatis diperkecil agar ringan. Klik Simpan &amp; Terbitkan setelah selesai.</p>
+  <div class="grid gap-2 mb-4">${l.map((g,n)=>`<div class="it gadm"><img src="${esc(g.src)}" alt=""><input class="inp" style="flex:1;min-width:10rem" data-gc="${esc(g.id)}" value="${esc(g.cap||'')}" placeholder="Keterangan gambar (opsional)" maxlength="120"><div class="flex gap-1"><button class="btn btn2 sm" data-a="gup" data-v="${esc(g.id)}"${n?'':' disabled'} title="Naikkan">&uarr;</button><button class="btn btn2 sm" data-a="gdn" data-v="${esc(g.id)}"${n<l.length-1?'':' disabled'} title="Turunkan">&darr;</button><button class="btn dg sm" data-a="gdel" data-v="${esc(g.id)}">${I('trash','w-3 h-3')} Hapus</button></div></div>`).join('')||'<div class="empty">Belum ada gambar.</div>'}</div>
+  <label class="lbl">Tambah Gambar</label><input id="gimg" type="file" accept="image/*" multiple class="inp"${l.length>=GAL_MAX?' disabled':''}></div>`;
+}
+function resizeImg(file,max=1280){
+  return new Promise((ok,no)=>{
+    const fr=new FileReader();
+    fr.onerror=()=>no(new Error('baca'));
+    fr.onload=()=>{const im=new Image();
+      im.onerror=()=>no(new Error('gambar'));
+      im.onload=()=>{
+        const r=Math.min(1,max/Math.max(im.width,im.height)),w=Math.max(1,Math.round(im.width*r)),h=Math.max(1,Math.round(im.height*r));
+        const c=document.createElement('canvas');c.width=w;c.height=h;
+        const x=c.getContext('2d');x.fillStyle='#fff';x.fillRect(0,0,w,h);x.drawImage(im,0,0,w,h);
+        ok(c.toDataURL('image/jpeg',0.8));
+      };im.src=fr.result};
+    fr.readAsDataURL(file);
+  });
+}
+async function addImgs(files){
+  S.galeri=S.galeri||[];
+  let n=0,bad=0,full=false;
+  for(const f of files){
+    if(S.galeri.length>=GAL_MAX){full=true;break}
+    if(!/^image\//.test(f.type)){bad++;continue}
+    try{S.galeri.push({id:newId(),src:await resizeImg(f),cap:''});n++}catch(e){bad++}
+  }
+  if(n)dirty=true;
+  render();
+  toast((n?n+' gambar ditambahkan. Klik Simpan & Terbitkan. ':'')+(full?'Batas '+GAL_MAX+' gambar tercapai. ':'')+(bad?bad+' file gagal/bukan gambar.':''));
+}
+let lb=null;
 function siswaView(){
   const bigT=()=>'<div class="grid gap-3 sm:grid-cols-'+Math.min(Math.max(S.levels.length,1),3)+'">'+S.levels.map(l=>`<button class="it flex items-center gap-3" style="cursor:pointer;text-align:left" data-a="st" data-v="${esc(l)}"><div class="ic" style="width:3rem;height:3rem">${I('layers','w-5 h-5')}</div><b class="flex-1 text-lg">Kelas ${esc(l)}</b>${I('arrow','w-4 h-4')}</button>`).join('')+'</div>';
   const crumb=(txt,act,lbl)=>`<div class="flex items-center justify-between gap-2 flex-wrap mb-4"><div class="flex items-center gap-2 font-bold text-sm">${I('layers','w-4 h-4')}<span>${txt}</span></div><button class="btn btn2 sm" data-a="${act}">${lbl}</button></div>`;
   /* Langkah 1: pilih tingkat */
-  if(!pT||!S.levels.includes(pT))return `<div class="card">${step(1,'Pilih Tingkat')}${bigT()}</div>`;
+  if(!pT||!S.levels.includes(pT))return `<div class="card">${step(1,'Pilih Tingkat')}${bigT()}</div>`+galeriView();
   /* Langkah 2: pilih kelas */
   const ks=S.classes[pT]||[];
   if(!pK||!ks.includes(pK))return `<div class="card">${crumb('Kelas '+esc(pT),'sbt','&larr; Ganti Tingkat')}${step(2,'Pilih Kelas')}<div class="flex flex-wrap gap-2">${ks.map(k=>`<button class="chip" data-a="sk" data-v="${esc(k)}">${esc(k)}</button>`).join('')||'<span class="mu text-sm italic">Belum ada kelas pada tingkat ini.</span>'}</div></div>`;
@@ -314,7 +367,7 @@ function excelView(){
   }
   return h;
 }
-function judulView(){return linkCard()+judulView0()+dbCard()+temaCard()}
+function judulView(){return linkCard()+judulView0()+galeriCard()+dbCard()+temaCard()}
 function judulView0(){
   const f=(id,l,v,ph)=>`<div><label class="lbl">${l}</label><input id="${id}" class="inp" value="${esc(v)}" placeholder="${ph||''}"></div>`;
   return `<div class="card"><h2 class="font-bold text-lg mb-4 flex items-center gap-2">${I('sliders','w-5 h-5')} Informasi Utama Portal</h2><div class="grid gap-4">${f('gS','Nama Sekolah',S.sekolah)}${f('gK','Nama Kegiatan Ujian',S.kegiatan)}${f('gT','Tahun Pelajaran',S.tahun,'2026/2027')}<div><label class="lbl">Ukuran Font Judul Ujian: <span id="gFv" style="color:var(--ac)">${Math.round((S.fj||1)*100)}%</span></label><div class="flex items-center gap-3"><input id="gF" type="range" min="50" max="160" step="5" value="${Math.round((S.fj||1)*100)}" style="flex:1;accent-color:var(--ac)"><button class="btn btn2 sm" data-a="fjr">Reset</button></div><p class="mu text-xs mt-1">100% = ukuran standar. Perubahan langsung terlihat pada judul di bagian atas halaman.</p></div></div></div>`;
@@ -348,6 +401,7 @@ function render(){
   if(edit)h+=`<div class="card sbar flex items-center justify-between gap-3 flex-wrap"><span id="pst"></span><button id="ppub" class="btn" data-a="pub">${I('cloud')} Simpan &amp; Terbitkan</button></div>`;
   h+=`<footer class="text-center mu text-xs mt-10">&copy; ${new Date().getFullYear()} ${esc(S.sekolah)}</footer></main>`;
   if(askPw)h+=`<div class="modal"><div class="card w-full" style="max-width:24rem;margin:0"><h3 class="font-bold text-lg mb-1 flex items-center gap-2">${I('lock','w-5 h-5')} Masuk Mode Panitia</h3><p class="mu text-xs mb-4">Masukkan password panitia.</p><input id="pw" type="password" class="inp" placeholder="Password" autocomplete="off">${pwErr?'<p class="text-xs mt-2" style="color:var(--er)">Password salah.</p>':''}<div class="flex gap-2 mt-4"><button class="btn flex-1" data-a="pwok">Masuk</button><button class="btn btn2" data-a="pwcx">Batal</button></div></div></div>`;
+  if(lb){const g=galList().find(x=>x.id===lb);if(g)h+=`<div class="lbx" data-a="glx"><img src="${esc(g.src)}" alt="${esc(g.cap||'Gambar')}">${g.cap?`<p>${esc(g.cap)}</p>`:''}</div>`;else lb=null}
   app.innerHTML=h;updBar();fitTitles();
   if(askPw){const p=$('pw');if(p)p.focus()}
   {const dt=$('dtabs'),o=dt&&dt.querySelector('.on');if(o)dt.scrollLeft=o.offsetLeft-(dt.clientWidth-o.clientWidth)/2}
@@ -355,6 +409,7 @@ function render(){
   const ft=$('ft');if(ft)ft.onchange=()=>{$('fk').innerHTML=kelasOpts(ft.value,'*');kelasBind()};kelasBind();
   const fd=$('fd');if(fd)fd.oninput=()=>{$('fh').textContent=fd.value?'· '+HARI[dow(fd.value)]:''};
   const gf=$('gF');if(gf)gf.oninput=()=>{const v=+gf.value;S.fj=v/100;$('hK').style.setProperty('--fj',S.fj);$('gFv').textContent=v+'%';dirty=true;updBar()};
+  const gi=$('gimg');if(gi)gi.onchange=()=>{const fs=[...gi.files];gi.value='';if(fs.length)addImgs(fs)};
   const xf=$('xf');if(xf)xf.onchange=()=>{if(xf.files[0])readImport(xf.files[0])};
   [['gS','sekolah','hS'],['gK','kegiatan','hK'],['gT','tahun','hT']].forEach(([i,k,o])=>{const el=$(i);if(el)el.oninput=()=>{S[k]=el.value;$(o).textContent=el.value;dirty=true;updBar()}});
 }
@@ -566,9 +621,14 @@ app.addEventListener('click',e=>{
   else if(a==='xt'){makeXlsx([],'Template-Jadwal-Ujian.xlsx').catch(()=>toast('Gagal membuat file Excel. Periksa koneksi internet.'));return}
   else if(a==='ia'||a==='ir'){const go=applyImp(a==='ir');render();if(go)return publish();return}
   else if(a==='ic')imp=null;
+  else if(a==='glb'){lb=v}
+  else if(a==='glx'){lb=null}
+  else if(a==='gdel'){S.galeri=(S.galeri||[]).filter(g=>g.id!==v);dirty=true}
+  else if(a==='gup'||a==='gdn'){const L=S.galeri||[],n=L.findIndex(g=>g.id===v),m=a==='gup'?n-1:n+1;if(n>=0&&m>=0&&m<L.length){[L[n],L[m]]=[L[m],L[n]];dirty=true}}
   else if(a==='pub')return publish();
   render();
 });
+app.addEventListener('input',e=>{const el=e.target,id=el.dataset&&el.dataset.gc;if(!id)return;const g=(S.galeri||[]).find(x=>x.id===id);if(g){g.cap=el.value;dirty=true;updBar()}});
 app.addEventListener('change',e=>{
   const el=e.target,f=el.dataset&&el.dataset.sf;
   if(f){
